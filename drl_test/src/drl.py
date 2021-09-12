@@ -1,7 +1,9 @@
 import numpy as np
 import cv2
 from PIL import Image as im
+from numpy.core.numeric import True_
 from numpy.ma.core import asanyarray
+from sklearn.cluster import KMeans
 
 
 def nothing(value):
@@ -15,7 +17,7 @@ cv2.createTrackbar('t2', 'Slider', 0, 255, nothing)
 
 def func():
     while True:
-        grid = np.genfromtxt('/home/hetal/catkin_ws/src/drl_test/src/log1.csv', delimiter=',')
+        grid = np.genfromtxt('src/log1.csv', delimiter=',')
         grid = np.reshape(grid, (384,384))
         #  reference grid
         grid = grid[0:320, 0:320]
@@ -81,7 +83,7 @@ def func():
         
         #  Class merging, Closed & Unknown.
         new_empty[new_empty==1] = 0
-        
+        new_empty[new_empty == 0.5] = 1.0
         
         
         empty_img_mod = cv2.resize(new_empty, (64,64))
@@ -107,15 +109,34 @@ def func():
         empty_img_mod = empty_img_mod.astype('uint8')
         # print(np.shape(empty_img_mod))
         # img_blank = cv2.cvtColor(img_blank, cv2.COLOR_BGR2GRAY)
-        tr1 = cv2.getTrackbarPos('t1', 'Slider')
-        tr2 = cv2.getTrackbarPos('t2', 'Slider')
-        canny = cv2.Canny(empty_img_mod,tr1,tr2)
-        cv2.imshow("edges", canny)
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        empty_img_mod = cv2.filter2D(empty_img_mod, -1, kernel)
 
+        while True:
+
+            tr1 = cv2.getTrackbarPos('t1', 'Slider')
+            tr2 = cv2.getTrackbarPos('t2', 'Slider')
+            
+            # canny = cv2.Canny(empty_img_mod,tr1,tr2)
+            (thresh, Bin) = cv2.threshold(empty_img_mod, tr1,255,cv2.THRESH_BINARY)
+            (cnts,_) = cv2.findContours(Bin, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+            
+            Bin_with_contours = cv2.drawContours(cv2.cvtColor(Bin, cv2.COLOR_GRAY2BGR), cnts, 0, (0,255,0),1)
+            cv2.imshow("edges", Bin)
+            cv2.imshow("edges", Bin_with_contours)
+            
+
+            
+            key = cv2.waitKey(1)
+
+            if key == 27:
+                break
+        
         key = cv2.waitKey(1)
 
         if key == 27:
             break
+
 
 
 if __name__ == '__main__':
